@@ -1,40 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# devroast
 
-## Getting Started
+Cole seu codigo. Leve um roast.
 
-First, run the development server:
+**devroast** e um app de code roasting onde voce envia seu codigo e recebe reviews brutalmente honestas, notas e sugestoes de melhoria. Pense em code review, mas com o maximo de sarcasmo.
+
+> Construido durante o evento **NLW (Next Level Week)** da [Rocketseat](https://rocketseat.com.br), seguindo as aulas do evento.
+
+## Como funciona
+
+1. **Cole seu codigo** no editor estilo terminal
+2. **Ative o roast mode** para sarcasmo maximo (ou deixe desligado para uma review mais leve)
+3. **Clique em "roast_my_code"** e receba uma nota com feedback detalhado gerado por IA
+4. **Confira o shame leaderboard** para ver os piores codigos da internet, ranqueados por vergonha
+
+## Funcionalidades
+
+- Editor de codigo com tema de terminal e syntax highlighting
+- Toggle de roast mode para sarcasmo extra
+- Sistema de notas (0-10) com feedback detalhado
+- Shame leaderboard ranqueando as piores submissoes
+- Tema escuro inspirado em terminais de desenvolvedor
+
+## Primeiros passos
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Instalar dependencias
+pnpm install
+
+# Iniciar o servidor de desenvolvimento
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000) para ver o app.
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+## Licenca
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
-
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
-
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+MIT
