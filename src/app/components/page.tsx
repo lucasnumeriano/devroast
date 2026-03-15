@@ -112,8 +112,15 @@ export default async function ComponentsPage() {
 
         {/* CodeBlock */}
         <Section title="code_block">
-          <div className="max-w-xl">
-            <CodeBlock code={sampleCode} lang="javascript" filename="calculate.js" />
+          <div className="max-w-xl overflow-hidden border border-zinc-800">
+            <div className="flex h-10 items-center gap-3 border-b border-zinc-800 px-4">
+              <span className="size-2.5 rounded-full bg-red-500" />
+              <span className="size-2.5 rounded-full bg-amber-500" />
+              <span className="size-2.5 rounded-full bg-emerald-500" />
+              <span className="flex-1" />
+              <span className="font-mono text-xs text-zinc-600">calculate.js</span>
+            </div>
+            <CodeBlock code={sampleCode} lang="javascript" />
           </div>
         </Section>
 

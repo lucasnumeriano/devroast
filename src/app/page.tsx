@@ -38,6 +38,7 @@ export default function Home() {
   const [code, setCode] = useState('')
   const [roastMode, setRoastMode] = useState(true)
   const [language, setLanguage] = useState<string | undefined>(undefined)
+  const [isOverLimit, setIsOverLimit] = useState(false)
 
   return (
     <main className="flex flex-col items-center px-10 pt-20 pb-0">
@@ -61,6 +62,7 @@ export default function Home() {
           onChange={setCode}
           language={language}
           onLanguageChange={setLanguage}
+          onOverLimit={setIsOverLimit}
         />
       </section>
 
@@ -70,7 +72,7 @@ export default function Home() {
           <Toggle label="roast mode" checked={roastMode} onCheckedChange={setRoastMode} />
           <span className="font-sans text-xs text-zinc-600">{'// maximum sarcasm enabled'}</span>
         </div>
-        <Button variant="primary" size="md" disabled={code.trim().length === 0}>
+        <Button variant="primary" size="md" disabled={code.trim().length === 0 || isOverLimit}>
           $ roast_my_code
         </Button>
       </section>

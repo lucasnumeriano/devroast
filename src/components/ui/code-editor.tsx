@@ -93,11 +93,15 @@ const editorTheme = EditorView.theme(
   { dark: true },
 )
 
+const MAX_LENGTH_DEFAULT = 5000
+
 type CodeEditorProps = {
   value?: string
   onChange?: (value: string) => void
   language?: string
   onLanguageChange?: (lang: string | undefined) => void
+  maxLength?: number
+  onOverLimit?: (isOver: boolean) => void
   className?: string
 }
 
@@ -106,16 +110,22 @@ function CodeEditor({
   onChange,
   language,
   onLanguageChange,
+  maxLength = MAX_LENGTH_DEFAULT,
+  onOverLimit,
   className,
 }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   const onLanguageChangeRef = useRef(onLanguageChange)
+  const onOverLimitRef = useRef(onOverLimit)
   const initialValueRef = useRef(value)
   const languageCompartmentRef = useRef(new Compartment())
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentLanguageRef = useRef<string | null>(null)
+  const wasOverRef = useRef(value.length > maxLength)
+  const maxLengthRef = useRef(maxLength)
+  const [charCount, setCharCount] = useState(value.length)
   const [showLanguageMenu, setShowLanguageMenu] = useState(false)
   const [detectedLanguage, setDetectedLanguage] = useState<string>('plaintext')
   const menuRef = useRef<HTMLDivElement>(null)
@@ -125,6 +135,8 @@ function CodeEditor({
 
   onChangeRef.current = onChange
   onLanguageChangeRef.current = onLanguageChange
+  onOverLimitRef.current = onOverLimit
+  maxLengthRef.current = maxLength
 
   const applyLanguage = useCallback(async (langId: string) => {
     const view = viewRef.current
@@ -196,6 +208,14 @@ function CodeEditor({
           if (update.docChanged) {
             const doc = update.state.doc.toString()
             onChangeRef.current?.(doc)
+            setCharCount(doc.length)
+
+            const isOver = doc.length > maxLengthRef.current
+            if (isOver !== wasOverRef.current) {
+              wasOverRef.current = isOver
+              onOverLimitRef.current?.(isOver)
+            }
+
             detectLanguage(doc)
           }
         }),
@@ -403,6 +423,16 @@ function CodeEditor({
         </div>
       </div>
       <div ref={containerRef} className="h-80 bg-[#111111]" />
+      <div className="flex h-8 items-center justify-end border-t border-zinc-800 px-4">
+        <span
+          className={twMerge(
+            'font-mono text-xs',
+            charCount > maxLength ? 'text-red-500' : 'text-zinc-600',
+          )}
+        >
+          {charCount.toLocaleString()} / {maxLength.toLocaleString()}
+        </span>
+      </div>
     </div>
   )
 }
