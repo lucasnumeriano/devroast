@@ -2,12 +2,12 @@
 
 ## Resumo
 
-Feature principal do devroast: o usuario cola codigo, submete para analise, e ve o resultado gerado pela IA sendo streamado progressivamente na pagina de resultado. Usa Gemini 2.0 Flash via Vercel AI SDK v5 com `streamText` + `Output.object()`.
+Feature principal do devroast: o usuario cola codigo, submete para analise, e ve o resultado gerado pela IA sendo streamado progressivamente na pagina de resultado. Usa Gemini 2.0 Flash via Vercel AI SDK v5 com `streamObject` no servidor e `useObject` no client.
 
 ## Decisao Arquitetural
 
 - **Server Action + API Route split**: Server Actions nao suportam streaming de respostas, entao a criacao do roast (validacao, rate limiting, insert no DB) fica numa Server Action, e o streaming da IA fica numa API Route separada.
-- **`streamText` + `Output.object()`** em vez de `streamObject` (deprecated no AI SDK v5+).
+- **`streamObject`** no servidor com `useObject` no client — par documentado e estavel no AI SDK v5. (`streamObject` so sera deprecated no AI SDK v6+, que e beta).
 - **`useObject`** no client para consumir o stream e renderizar progressivamente.
 - **Rate limiting via DB** (5/hora por IP) — simples, sem dependencias externas.
 - **Toast customizado** com `@base-ui/react` para erros na homepage.
@@ -23,7 +23,7 @@ Feature principal do devroast: o usuario cola codigo, submete para analise, e ve
 6. Client navega para `/roast/[id]`
 7. Page detecta `status === 'pending'`, renderiza `RoastStreamView` (client component)
 8. `RoastStreamView` chama `submit()` do `useObject` (via `useEffect` no mount) para POST em `/api/roast/[id]/stream`
-9. API Route chama Gemini 2.0 Flash via `streamText` com `Output.object()` (Vercel AI SDK v5)
+9. API Route chama Gemini 2.0 Flash via `streamObject` (Vercel AI SDK v5)
 10. Resultados parciais streamam progressivamente: score, verdict, roastQuote, issues (um por um), suggestedDiff
 11. No `onFinish`, API Route salva o resultado completo no DB e marca `status: 'completed'`
 12. Se o usuario recarregar a pagina depois, o roast carrega do DB pela rota server-side existente
@@ -72,7 +72,7 @@ Issues sao inseridas em batch apos o stream completar, como antes.
 
 **Arquivo:** `src/lib/roast-schema.ts`
 
-Schema Zod compartilhado entre a API Route (para `Output.object()`) e o client (para `useObject`):
+Schema Zod compartilhado entre a API Route (para `streamObject`) e o client (para `useObject`):
 
 ```typescript
 import { z } from 'zod'
@@ -137,24 +137,29 @@ Se count >= 5, retornar `{ error: 'rate limit exceeded. try again later.' }`.
 
 **Metodo:** `POST` (requerido pelo `useObject` — seu `submit()` envia um POST)
 
+**Validacao do `id`:** Validar formato UUID antes de consultar o DB. Se invalido, retornar 400.
+
 **Flow:**
-1. Buscar roast por `id` no DB
-2. Se nao encontrado: retornar 404
-3. Se `status !== 'pending'`: retornar 409 (ja processado)
-4. Chamar `streamText` do pacote `ai` com `Output.object()`:
+1. Validar `id` como UUID (regex ou Zod). Se invalido: retornar 400
+2. Buscar roast por `id` no DB
+3. Se nao encontrado: retornar 404
+4. Se `status !== 'pending'`: retornar 409 (ja processado — cobre tanto `'completed'` quanto `'failed'`)
+5. Chamar `streamObject` do pacote `ai`:
    - Model: `google('gemini-2.0-flash')` via `createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })`
    - System prompt (ver secao de Prompt)
    - User prompt com o codigo
-   - `output: Output.object({ schema: roastResultSchema })`
+   - `schema: roastResultSchema`
    - Temperature baseada em `roastMode`
-5. Retornar o stream como response via `result.toTextStreamResponse()`
-6. No callback `onFinish`:
+6. Retornar o stream como response via `result.toTextStreamResponse()`
+7. No callback `onFinish`:
    - Usar `WHERE id = $1 AND status = 'pending'` para prevenir escritas duplicadas
    - Atualizar registro do roast: setar `score`, `verdict`, `roastQuote`, `suggestedDiff`, `diffFileName`, `status: 'completed'`
    - Inserir linhas em `roast_issues` com `position` correspondendo ao indice do array
-7. Em erro: atualizar `status` do roast para `'failed'`
+8. Em erro: atualizar `status` do roast para `'failed'`
 
 **Timeout:** Definir `export const maxDuration = 60` na API Route para permitir ate 60 segundos para o stream da IA.
+
+**Nota sobre `onFinish` em ambientes serverless:** `onFinish` executa apos a response ser enviada ao client. Em ambientes serverless (ex: Vercel), a funcao pode ser terminada antes do `onFinish` completar as escritas no DB. Usar `waitUntil` de `next/server` se necessario para estender o lifetime da funcao. Em dev local, isso nao e um problema.
 
 ### AI Prompt
 
@@ -229,9 +234,14 @@ import { experimental_useObject as useObject } from '@ai-sdk/react'
 const { object, isLoading, error, submit } = useObject({
   api: `/api/roast/${roastId}/stream`,
   schema: roastResultSchema,
+  onError(error) {
+    // Se 409 (roast ja processado), esperar 2s e revalidar server data
+    // Caso contrario, mostrar erro
+  },
 })
 
 // Trigger the stream on mount
+// biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount-only effect
 useEffect(() => {
   submit(undefined)
 }, [])
@@ -248,7 +258,9 @@ Renderiza progressivamente conforme o `object` parcial chega:
 
 Quando `isLoading` vira false e sem erro, chama `router.refresh()` para revalidar dados do servidor.
 
-Se `error`, mostra estado de erro.
+Se `error`, verifica se e um 409 (roast ja processado). Se sim, espera 2 segundos e chama `router.refresh()` para carregar o resultado do DB. Se nao, mostra estado de erro generico.
+
+**Handling do 409:** O `onError` callback do `useObject` recebe o erro. Verificar a mensagem ou status para detectar 409. Em caso de 409, o roast ja foi processado (por outra aba ou reload durante stream), entao basta revalidar a pagina para carregar o resultado do servidor.
 
 #### RoastErrorView
 
@@ -324,7 +336,7 @@ Adicionar a `.env.example`.
 - [ ] Adicionar colunas `status` e `ip` na tabela `roasts`
 - [ ] Tornar `score`, `verdict`, `roastQuote` nullable
 - [ ] Gerar e aplicar migracao Drizzle
-- [ ] Atualizar seed se necessario para compatibilidade
+- [ ] Atualizar seed para setar `status: 'completed'` explicitamente nos roasts gerados (default e `'pending'`)
 
 ### Fase 2: Shared Schema & AI Config
 
@@ -343,8 +355,9 @@ Adicionar a `.env.example`.
 ### Fase 4: API Route
 
 - [ ] Criar `src/app/api/roast/[id]/stream/route.ts`
+- [ ] Implementar validacao de UUID no parametro `id` (retornar 400 se invalido)
 - [ ] Implementar lookup do roast e guards (404, 409)
-- [ ] Implementar `streamText` + `Output.object()` com Gemini 2.0 Flash
+- [ ] Implementar `streamObject` com Gemini 2.0 Flash
 - [ ] Implementar system/user prompts com variacao de roast mode
 - [ ] Implementar `onFinish` para salvar resultado no DB
 - [ ] Implementar error handling (marcar como `failed`)
@@ -390,6 +403,6 @@ Adicionar a `.env.example`.
 | Stream da IA falha no meio | Roast marcado `failed`, error view mostrada |
 | Usuario recarrega roast pendente | POST retorna 409. `RoastStreamView` captura 409, espera 2s, chama `router.refresh()` para pegar resultado completo. Se ja completou: carrega do DB. Se falhou: mostra error view |
 | Usuario visita roast com falha | Error view com botao "try again" |
-| API Route chamada para roast completo | Retorna 409, client faz fallback para dados do DB |
+| API Route chamada para roast completo ou falho | Retorna 409, client faz fallback para dados do DB |
 | Race condition na escrita do DB | `onFinish` usa `WHERE status = 'pending'` para prevenir escritas duplicadas |
 | Stream da IA trava | `maxDuration = 60` na API Route mata a request apos 60s |
