@@ -46,11 +46,17 @@ function LeaderboardEntry({
       </div>
 
       {/* Code Block */}
-      <CodeBlock
-        code={code}
-        lang={language as BundledLanguage}
-        className={twMerge('h-30 bg-[#111111]', '[&_pre]:p-3.5 [&_pre]:text-xs')}
-      />
+      <div className="relative">
+        <CodeBlock
+          code={code}
+          lang={language as BundledLanguage}
+          className={twMerge('h-30 bg-[#111111]', '[&_pre]:p-3.5 [&_pre]:text-xs')}
+        />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-[#111111] to-transparent"
+          aria-hidden="true"
+        />
+      </div>
     </div>
   )
 }
