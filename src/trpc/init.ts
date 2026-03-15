@@ -1,10 +1,10 @@
 import { initTRPC } from '@trpc/server'
 import { db } from '@/db'
 
-export const createTRPCContext = async (opts: { headers: Headers }) => {
+export const createTRPCContext = async (opts?: { headers: Headers }) => {
   return {
     db,
-    headers: opts.headers,
+    headers: opts?.headers ?? new Headers(),
   }
 }
 

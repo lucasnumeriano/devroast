@@ -4,14 +4,14 @@ import { twMerge } from 'tailwind-merge'
 
 type CodeBlockProps = {
   code: string
-  lang: BundledLanguage
+  lang: BundledLanguage | 'other'
   showLineNumbers?: boolean
   className?: string
 }
 
 async function CodeBlock({ code, lang, showLineNumbers = true, className }: CodeBlockProps) {
   const html = await codeToHtml(code, {
-    lang,
+    lang: lang === 'other' ? 'text' : lang,
     theme: 'vesper',
   })
 

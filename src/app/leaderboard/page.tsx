@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
+import { cacheLife } from 'next/cache'
 import { LeaderboardEntry } from '@/components/ui/leaderboard-entry'
-import { caller } from '@/trpc/server'
+import { cachedCaller } from '@/trpc/server'
+import { CodeExpandButton } from '../code-expand-button'
+import { LeaderboardStats } from './leaderboard-stats'
 
 export const metadata: Metadata = {
   title: 'shame leaderboard | devroast',
@@ -8,10 +11,10 @@ export const metadata: Metadata = {
 }
 
 export default async function LeaderboardPage() {
-  const [entries, stats] = await Promise.all([
-    caller.leaderboard.getEntries({ limit: 20 }),
-    caller.leaderboard.getStats(),
-  ])
+  'use cache'
+  cacheLife('leaderboard')
+
+  const entries = await cachedCaller.leaderboard.getEntries({ limit: 20 })
 
   return (
     <main className="flex flex-col items-center px-10 pt-10 pb-10">
@@ -30,15 +33,7 @@ export default async function LeaderboardPage() {
           </p>
 
           {/* Stats */}
-          <div className="flex items-center gap-2">
-            <span className="font-sans text-xs text-zinc-600">
-              {stats.totalRoasts.toLocaleString()} submissions
-            </span>
-            <span className="font-sans text-xs text-zinc-600">&middot;</span>
-            <span className="font-sans text-xs text-zinc-600">
-              avg score: {stats.avgScore.toFixed(1)}/10
-            </span>
-          </div>
+          <LeaderboardStats />
         </section>
 
         {/* Leaderboard Entries */}
@@ -51,14 +46,20 @@ export default async function LeaderboardPage() {
             </div>
           ) : (
             entries.map((entry, index) => (
-              <LeaderboardEntry
-                key={entry.id}
-                rank={index + 1}
-                score={entry.score.toFixed(1)}
-                code={entry.code}
-                language={entry.language}
-                lineCount={entry.lineCount}
-              />
+              <div key={entry.id}>
+                <LeaderboardEntry
+                  rank={index + 1}
+                  score={entry.score.toFixed(1)}
+                  code={entry.code}
+                  language={entry.language}
+                  lineCount={entry.lineCount}
+                />
+                <CodeExpandButton
+                  roastId={entry.id}
+                  language={entry.language}
+                  lineCount={entry.lineCount}
+                />
+              </div>
             ))
           )}
         </section>

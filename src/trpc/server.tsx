@@ -24,6 +24,13 @@ export const caller = appRouter.createCaller(async () =>
   createTRPCContext({ headers: await headers() }),
 )
 
+/**
+ * Headerless caller for use inside `'use cache'` server components.
+ * Avoids the dynamic `headers()` call that Next.js forbids in cached scopes.
+ * Only use for public, read-only queries (e.g. leaderboard).
+ */
+export const cachedCaller = appRouter.createCaller(() => createTRPCContext())
+
 export function HydrateClient(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient()
   return <HydrationBoundary state={dehydrate(queryClient)}>{props.children}</HydrationBoundary>

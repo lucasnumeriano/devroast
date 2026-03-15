@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -120,7 +121,11 @@ export default async function ComponentsPage() {
               <span className="flex-1" />
               <span className="font-mono text-xs text-zinc-600">calculate.js</span>
             </div>
-            <CodeBlock code={sampleCode} lang="javascript" showLineNumbers={false} />
+            <Suspense
+              fallback={<div className="p-4 font-mono text-xs text-zinc-600">loading...</div>}
+            >
+              <CodeBlock code={sampleCode} lang="javascript" showLineNumbers={false} />
+            </Suspense>
           </div>
         </Section>
 

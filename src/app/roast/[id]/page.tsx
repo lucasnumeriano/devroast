@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import type { BundledLanguage } from 'shiki'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -57,7 +58,22 @@ function Divider() {
   return <div className="h-px w-full bg-zinc-800" />
 }
 
-export default async function RoastResultPage({ params }: { params: Promise<{ id: string }> }) {
+function RoastResultSkeleton() {
+  return (
+    <main className="flex flex-col gap-10 px-20 py-10">
+      <div className="flex w-full items-center gap-12">
+        <div className="size-24 animate-pulse rounded-full bg-zinc-800" />
+        <div className="flex flex-1 flex-col gap-4">
+          <div className="h-5 w-24 animate-pulse rounded bg-zinc-800" />
+          <div className="h-6 w-96 animate-pulse rounded bg-zinc-800" />
+          <div className="h-4 w-40 animate-pulse rounded bg-zinc-800" />
+        </div>
+      </div>
+    </main>
+  )
+}
+
+async function RoastResultContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const roast = await caller.roast.getById({ id })
 
@@ -153,5 +169,13 @@ export default async function RoastResultPage({ params }: { params: Promise<{ id
         </>
       )}
     </main>
+  )
+}
+
+export default function RoastResultPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<RoastResultSkeleton />}>
+      <RoastResultContent params={params} />
+    </Suspense>
   )
 }

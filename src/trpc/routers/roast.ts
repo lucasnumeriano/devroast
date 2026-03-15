@@ -45,7 +45,7 @@ export const roastRouter = createTRPCRouter({
       }
 
       const html = await codeToHtml(roast.code, {
-        lang: roast.language as BundledLanguage,
+        lang: roast.language === 'other' ? 'text' : (roast.language as BundledLanguage),
         theme: 'vesper',
       })
 

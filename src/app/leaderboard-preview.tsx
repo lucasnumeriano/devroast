@@ -1,13 +1,17 @@
+import { cacheLife } from 'next/cache'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { LeaderboardEntry } from '@/components/ui/leaderboard-entry'
-import { caller } from '@/trpc/server'
+import { cachedCaller } from '@/trpc/server'
 import { CodeExpandButton } from './code-expand-button'
 
 export async function LeaderboardPreview() {
+  'use cache'
+  cacheLife('leaderboard')
+
   const [entries, stats] = await Promise.all([
-    caller.leaderboard.getEntries({ limit: 3 }),
-    caller.leaderboard.getStats(),
+    cachedCaller.leaderboard.getEntries({ limit: 3 }),
+    cachedCaller.leaderboard.getStats(),
   ])
 
   return (
