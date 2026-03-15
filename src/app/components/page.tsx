@@ -120,7 +120,7 @@ export default async function ComponentsPage() {
               <span className="flex-1" />
               <span className="font-mono text-xs text-zinc-600">calculate.js</span>
             </div>
-            <CodeBlock code={sampleCode} lang="javascript" />
+            <CodeBlock code={sampleCode} lang="javascript" showLineNumbers={false} />
           </div>
         </Section>
 
