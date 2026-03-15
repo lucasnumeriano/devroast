@@ -1,10 +1,7 @@
-'use client'
-
 import Link from 'next/link'
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { CodeEditor } from '@/components/ui/code-editor'
-import { Toggle } from '@/components/ui/toggle'
+import { CodeInputSection } from './code-input-section'
+import { StatsBar } from './stats-bar'
 
 const leaderboardData = [
   {
@@ -35,11 +32,6 @@ const leaderboardData = [
 ]
 
 export default function Home() {
-  const [code, setCode] = useState('')
-  const [roastMode, setRoastMode] = useState(true)
-  const [language, setLanguage] = useState<string | undefined>(undefined)
-  const [isOverLimit, setIsOverLimit] = useState(false)
-
   return (
     <main className="flex flex-col items-center px-10 pt-20 pb-0">
       {/* Hero */}
@@ -55,34 +47,11 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Code Editor */}
-      <section className="mt-8 w-full max-w-195">
-        <CodeEditor
-          value={code}
-          onChange={setCode}
-          language={language}
-          onLanguageChange={setLanguage}
-          onOverLimit={setIsOverLimit}
-        />
-      </section>
-
-      {/* Actions Bar */}
-      <section className="mt-8 flex w-full max-w-195 items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Toggle label="roast mode" checked={roastMode} onCheckedChange={setRoastMode} />
-          <span className="font-sans text-xs text-zinc-600">{'// maximum sarcasm enabled'}</span>
-        </div>
-        <Button variant="primary" size="md" disabled={code.trim().length === 0 || isOverLimit}>
-          $ roast_my_code
-        </Button>
-      </section>
+      {/* Code Editor + Actions */}
+      <CodeInputSection />
 
       {/* Footer Stats */}
-      <section className="mt-8 flex items-center justify-center gap-6">
-        <span className="font-sans text-xs text-zinc-600">2,847 codes roasted</span>
-        <span className="font-mono text-xs text-zinc-600">&middot;</span>
-        <span className="font-sans text-xs text-zinc-600">avg score: 4.2/10</span>
-      </section>
+      <StatsBar />
 
       {/* Spacer */}
       <div className="h-15" />

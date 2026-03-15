@@ -1,74 +1,47 @@
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import type { BundledLanguage } from 'shiki'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CodeBlock } from '@/components/ui/code-block'
 import { DiffLine } from '@/components/ui/diff-line'
 import { ScoreRing } from '@/components/ui/score-ring'
+import { caller } from '@/trpc/server'
 
-const roastData = {
-  score: 3.5,
-  verdict: 'needs_serious_help' as const,
-  roastLine: '"this code looks like it was written during a power outage... in 2005."',
-  language: 'javascript',
-  lineCount: 7,
-  code: `function calculateTotal(items) {
-  var total = 0;
-  for (var i = 0; i < items.length; i++) {
-    total = total + items[i].price;
-  }
+export const metadata: Metadata = {
+  title: 'roast result | devroast',
+  description: 'your code has been roasted. see how it scored.',
+}
 
-  if (total > 100) {
-    discount = calculateDiscount(total);
-    total = total - 0.1;
-  }
+const verdictLabels: Record<string, string> = {
+  needs_serious_help: 'needs serious help',
+  bad: 'bad',
+  mediocre: 'mediocre',
+  decent: 'decent',
+  clean_code: 'clean code',
+}
 
-  // TODO: handle tax calculation
-  // TODO: handle currency conversion
+const verdictToBadgeStatus: Record<string, 'critical' | 'warning' | 'good'> = {
+  needs_serious_help: 'critical',
+  bad: 'critical',
+  mediocre: 'warning',
+  decent: 'good',
+  clean_code: 'good',
+}
 
-  return total;
-}`,
-  issues: [
-    {
-      status: 'critical' as const,
-      title: 'using var instead of const/let',
-      description:
-        'var is function-scoped and leads to hoisting bugs. use const by default, let when reassignment is needed.',
-    },
-    {
-      status: 'warning' as const,
-      title: 'imperative loop pattern',
-      description:
-        'for loops are verbose and error-prone. use .reduce() or .map() for cleaner, functional transformations.',
-    },
-    {
-      status: 'good' as const,
-      title: 'clear naming conventions',
-      description:
-        'calculateTotal and items are descriptive, self-documenting names that communicate intent without comments.',
-    },
-    {
-      status: 'good' as const,
-      title: 'single responsibility',
-      description:
-        'the function does one thing well — calculates a total. no side effects, no mixed concerns, no hidden complexity.',
-    },
-  ],
-  diff: {
-    filename: 'your_code.ts → improved_code.ts',
-    lines: [
-      { type: 'context' as const, content: 'function calculateTotal(items) {' },
-      { type: 'removed' as const, content: '  var total = 0;' },
-      { type: 'removed' as const, content: '  for (var i = 0; i < items.length; i++) {' },
-      { type: 'removed' as const, content: '    total = total + items[i].price;' },
-      { type: 'removed' as const, content: '  }' },
-      { type: 'removed' as const, content: '  return total;' },
-      {
-        type: 'added' as const,
-        content: '  return items.reduce((sum, item) => sum + item.price, 0);',
-      },
-      { type: 'context' as const, content: '}' },
-    ],
-  },
+function parseDiff(
+  suggestedDiff: string,
+): { type: 'added' | 'removed' | 'context'; content: string }[] {
+  return suggestedDiff.split('\n').map((line) => {
+    if (line.startsWith('+')) {
+      return { type: 'added' as const, content: line.slice(1) }
+    }
+    if (line.startsWith('-')) {
+      return { type: 'removed' as const, content: line.slice(1) }
+    }
+    return { type: 'context' as const, content: line.startsWith(' ') ? line.slice(1) : line }
+  })
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -85,24 +58,30 @@ function Divider() {
 }
 
 export default async function RoastResultPage({ params }: { params: Promise<{ id: string }> }) {
-  // TODO: fetch roast data by id when API is ready
-  const { id: _id } = await params
+  const { id } = await params
+  const roast = await caller.roast.getById({ id })
+
+  if (!roast) notFound()
+
+  const badgeStatus = verdictToBadgeStatus[roast.verdict] ?? 'warning'
 
   return (
     <main className="flex flex-col gap-10 px-20 py-10">
       {/* Score Hero */}
       <section className="flex w-full items-center gap-12">
-        <ScoreRing score={roastData.score} />
+        <ScoreRing score={roast.score} />
 
         <div className="flex flex-1 flex-col gap-4">
-          <Badge status="critical">verdict: {roastData.verdict}</Badge>
+          <Badge status={badgeStatus}>
+            verdict: {verdictLabels[roast.verdict] ?? roast.verdict}
+          </Badge>
 
-          <p className="font-sans text-xl leading-relaxed text-zinc-50">{roastData.roastLine}</p>
+          <p className="font-sans text-xl leading-relaxed text-zinc-50">{roast.roastQuote}</p>
 
           <div className="flex items-center gap-4">
-            <span className="font-mono text-xs text-zinc-600">lang: {roastData.language}</span>
-            <span className="font-mono text-xs text-zinc-600">·</span>
-            <span className="font-mono text-xs text-zinc-600">{roastData.lineCount} lines</span>
+            <span className="font-mono text-xs text-zinc-600">lang: {roast.language}</span>
+            <span className="font-mono text-xs text-zinc-600">&middot;</span>
+            <span className="font-mono text-xs text-zinc-600">{roast.lineCount} lines</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -120,7 +99,7 @@ export default async function RoastResultPage({ params }: { params: Promise<{ id
         <SectionTitle>your_submission</SectionTitle>
 
         <div className="overflow-hidden border border-zinc-800">
-          <CodeBlock code={roastData.code} lang="javascript" />
+          <CodeBlock code={roast.code} lang={roast.language as BundledLanguage} />
         </div>
       </section>
 
@@ -132,10 +111,10 @@ export default async function RoastResultPage({ params }: { params: Promise<{ id
 
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-5">
-            {roastData.issues.map((issue) => (
-              <Card key={issue.title}>
+            {roast.issues.map((issue) => (
+              <Card key={issue.id}>
                 <CardHeader>
-                  <Badge status={issue.status}>{issue.status}</Badge>
+                  <Badge status={issue.severity}>{issue.severity}</Badge>
                 </CardHeader>
                 <CardTitle>{issue.title}</CardTitle>
                 <CardDescription>{issue.description}</CardDescription>
@@ -145,28 +124,34 @@ export default async function RoastResultPage({ params }: { params: Promise<{ id
         </div>
       </section>
 
-      <Divider />
+      {/* Suggested Fix (only shown when diff exists) */}
+      {roast.suggestedDiff && (
+        <>
+          <Divider />
 
-      {/* Suggested Fix */}
-      <section className="flex flex-col gap-6">
-        <SectionTitle>suggested_fix</SectionTitle>
+          <section className="flex flex-col gap-6">
+            <SectionTitle>suggested_fix</SectionTitle>
 
-        <div className="overflow-hidden border border-zinc-800 bg-zinc-950">
-          <div className="flex h-10 items-center gap-2 border-b border-zinc-800 px-4">
-            <span className="font-mono text-xs font-medium text-zinc-500">
-              {roastData.diff.filename}
-            </span>
-          </div>
+            <div className="overflow-hidden border border-zinc-800 bg-zinc-950">
+              {roast.diffFileName && (
+                <div className="flex h-10 items-center gap-2 border-b border-zinc-800 px-4">
+                  <span className="font-mono text-xs font-medium text-zinc-500">
+                    {roast.diffFileName}
+                  </span>
+                </div>
+              )}
 
-          <div className="flex flex-col py-1">
-            {roastData.diff.lines.map((line) => (
-              <DiffLine key={`${line.type}-${line.content}`} type={line.type}>
-                {line.content}
-              </DiffLine>
-            ))}
-          </div>
-        </div>
-      </section>
+              <div className="flex flex-col py-1">
+                {parseDiff(roast.suggestedDiff).map((line) => (
+                  <DiffLine key={`${line.type}-${line.content}`} type={line.type}>
+                    {line.content}
+                  </DiffLine>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
     </main>
   )
 }
