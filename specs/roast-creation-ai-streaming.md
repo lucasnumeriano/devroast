@@ -139,6 +139,11 @@ Se count >= 5, retornar `{ error: 'rate limit exceeded. try again later.' }`.
 
 **Validacao do `id`:** Validar formato UUID antes de consultar o DB. Se invalido, retornar 400.
 
+**Formato de resposta de erro:** Todas as respostas nao-200 retornam JSON com `{ error: string }`:
+- 400: `{ error: 'invalid roast id' }`
+- 404: `{ error: 'roast not found' }`
+- 409: `{ error: 'roast already processed' }`
+
 **Flow:**
 1. Validar `id` como UUID (regex ou Zod). Se invalido: retornar 400
 2. Buscar roast por `id` no DB
@@ -156,6 +161,8 @@ Se count >= 5, retornar `{ error: 'rate limit exceeded. try again later.' }`.
    - Atualizar registro do roast: setar `score`, `verdict`, `roastQuote`, `suggestedDiff`, `diffFileName`, `status: 'completed'`
    - Inserir linhas em `roast_issues` com `position` correspondendo ao indice do array
 8. Em erro: atualizar `status` do roast para `'failed'`
+
+**Error handling detalhado:** Envolver a chamada `streamObject` em try/catch. Se o `streamObject` falha antes de iniciar o stream, o catch marca como `'failed'`. O callback `onFinish` recebe `{ object, error }` — se `object` e `undefined` (falha de validacao do schema), tambem marcar como `'failed'`. Usar um helper para evitar duplicacao:
 
 **Timeout:** Definir `export const maxDuration = 60` na API Route para permitir ate 60 segundos para o stream da IA.
 
@@ -260,7 +267,17 @@ Quando `isLoading` vira false e sem erro, chama `router.refresh()` para revalida
 
 Se `error`, verifica se e um 409 (roast ja processado). Se sim, espera 2 segundos e chama `router.refresh()` para carregar o resultado do DB. Se nao, mostra estado de erro generico.
 
-**Handling do 409:** O `onError` callback do `useObject` recebe o erro. Verificar a mensagem ou status para detectar 409. Em caso de 409, o roast ja foi processado (por outra aba ou reload durante stream), entao basta revalidar a pagina para carregar o resultado do servidor.
+**Handling do 409:** O `onError` callback do `useObject` recebe um `Error` cuja `message` contem o body da response. Para detectar 409, verificar se a mensagem contem `'roast already processed'` (o body JSON retornado pela API Route). Exemplo:
+
+```typescript
+onError(error) {
+  if (error.message.includes('roast already processed')) {
+    // Roast ja foi processado (outra aba ou reload durante stream)
+    setTimeout(() => router.refresh(), 2000)
+  }
+  // Outros erros sao mostrados no estado de erro generico
+}
+```
 
 #### RoastErrorView
 
@@ -293,7 +310,24 @@ status === 'pending'   -> render <RoastStreamView roastId={id} roastMode={roast.
 status === 'failed'    -> render <RoastErrorView />
 ```
 
-**Handling de tipos nullable:** Apos o check `status === 'completed'`, os campos de resultado (`score`, `verdict`, `roastQuote`) sao garantidamente non-null. Usar type narrowing (guard function ou assertion) para que os tipos TypeScript do `RoastResultContent` existente nao quebrem.
+**Handling de tipos nullable:** Apos o check de status, usar early return para narrowing dos campos de resultado. Exemplo concreto:
+
+```typescript
+// Render pending/failed views first
+if (roast.status === 'pending') {
+  return <RoastStreamView roastId={id} roastMode={roast.roastMode} />
+}
+if (roast.status === 'failed') {
+  return <RoastErrorView />
+}
+
+// After this point, status === 'completed'
+// score/verdict/roastQuote are guaranteed non-null
+// Use non-null assertions since the DB constraint guarantees this
+const score = roast.score!
+const verdict = roast.verdict!
+const roastQuote = roast.roastQuote!
+```
 
 O botao de share existente permanece como placeholder nao-funcional.
 
