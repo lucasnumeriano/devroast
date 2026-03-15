@@ -37,6 +37,7 @@ const leaderboardData = [
 export default function Home() {
   const [code, setCode] = useState('')
   const [roastMode, setRoastMode] = useState(true)
+  const [language, setLanguage] = useState<string | undefined>(undefined)
 
   return (
     <main className="flex flex-col items-center px-10 pt-20 pb-0">
@@ -55,7 +56,12 @@ export default function Home() {
 
       {/* Code Editor */}
       <section className="mt-8 w-full max-w-195">
-        <CodeEditor value={code} onChange={setCode} />
+        <CodeEditor
+          value={code}
+          onChange={setCode}
+          language={language}
+          onLanguageChange={setLanguage}
+        />
       </section>
 
       {/* Actions Bar */}
