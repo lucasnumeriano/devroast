@@ -4,8 +4,8 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import type { BundledLanguage } from 'shiki'
 import { CodeExpandButton } from '@/app/code-expand-button'
+import { ShareButton } from '@/app/roast/[id]/share-button'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CodeBlock } from '@/components/ui/code-block'
 import { DiffLine } from '@/components/ui/diff-line'
@@ -166,9 +166,7 @@ async function RoastResultContent({ params }: { params: Promise<{ id: string }> 
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="secondary" size="sm">
-              $ share_roast
-            </Button>
+            <ShareButton />
           </div>
         </div>
       </section>
