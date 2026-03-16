@@ -1,18 +1,70 @@
+import { eq } from 'drizzle-orm'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import type { BundledLanguage } from 'shiki'
+import { CodeExpandButton } from '@/app/code-expand-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CodeBlock } from '@/components/ui/code-block'
 import { DiffLine } from '@/components/ui/diff-line'
 import { ScoreRing } from '@/components/ui/score-ring'
+import { db } from '@/db'
+import { roasts } from '@/db/schema'
 import { caller } from '@/trpc/server'
+import { RoastErrorView } from './roast-error-view'
+import { RoastStreamView } from './roast-stream-view'
 
-export const metadata: Metadata = {
-  title: 'roast result | devroast',
-  description: 'your code has been roasted. see how it scored.',
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+
+  let roast:
+    | {
+        score: number | null
+        verdict: string | null
+        roastQuote: string | null
+        status: string
+      }
+    | undefined
+
+  try {
+    const [result] = await db
+      .select({
+        score: roasts.score,
+        verdict: roasts.verdict,
+        roastQuote: roasts.roastQuote,
+        status: roasts.status,
+      })
+      .from(roasts)
+      .where(eq(roasts.id, id))
+      .limit(1)
+    roast = result
+  } catch {
+    // Invalid UUID — fall through to not-found metadata
+  }
+
+  if (!roast) {
+    return { title: 'roast not found | devroast' }
+  }
+
+  if (roast.status !== 'completed') {
+    return {
+      title: 'roast in progress | devroast',
+      description: 'a code roast is being prepared...',
+    }
+  }
+
+  const verdictLabel = roast.verdict?.replace(/_/g, ' ') ?? 'mediocre'
+
+  return {
+    title: `score: ${roast.score?.toFixed(1)}/10 — ${verdictLabel} | devroast`,
+    description: roast.roastQuote ?? 'your code has been roasted.',
+  }
 }
 
 const verdictLabels: Record<string, string> = {
@@ -79,20 +131,33 @@ async function RoastResultContent({ params }: { params: Promise<{ id: string }> 
 
   if (!roast) notFound()
 
-  const badgeStatus = verdictToBadgeStatus[roast.verdict] ?? 'warning'
+  // Pending: show streaming view
+  if (roast.status === 'pending') {
+    return <RoastStreamView roastId={id} roastMode={roast.roastMode} />
+  }
+
+  // Failed: show error view
+  if (roast.status === 'failed') {
+    return <RoastErrorView />
+  }
+
+  // Completed: fallback values safe since only completed roasts reach here
+  const score = roast.score ?? 0
+  const verdict = roast.verdict ?? 'mediocre'
+  const roastQuote = roast.roastQuote ?? ''
+
+  const badgeStatus = verdictToBadgeStatus[verdict] ?? 'warning'
 
   return (
     <main className="flex flex-col gap-10 px-20 py-10">
       {/* Score Hero */}
       <section className="flex w-full items-center gap-12">
-        <ScoreRing score={roast.score} />
+        <ScoreRing score={score} />
 
         <div className="flex flex-1 flex-col gap-4">
-          <Badge status={badgeStatus}>
-            verdict: {verdictLabels[roast.verdict] ?? roast.verdict}
-          </Badge>
+          <Badge status={badgeStatus}>verdict: {verdictLabels[verdict] ?? verdict}</Badge>
 
-          <p className="font-sans text-xl leading-relaxed text-zinc-50">{roast.roastQuote}</p>
+          <p className="font-sans text-xl leading-relaxed text-zinc-50">{roastQuote}</p>
 
           <div className="flex items-center gap-4">
             <span className="font-mono text-xs text-zinc-600">lang: {roast.language}</span>
@@ -114,8 +179,21 @@ async function RoastResultContent({ params }: { params: Promise<{ id: string }> 
       <section className="flex flex-col gap-4">
         <SectionTitle>your_submission</SectionTitle>
 
-        <div className="overflow-hidden border border-zinc-800">
-          <CodeBlock code={roast.code} lang={roast.language as BundledLanguage} />
+        <div>
+          <div className="overflow-hidden border border-zinc-800">
+            <div className="relative">
+              <CodeBlock
+                code={roast.code}
+                lang={roast.language as BundledLanguage}
+                className="h-65 bg-[#111111]"
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-[#111111] to-transparent"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+          <CodeExpandButton roastId={id} language={roast.language} lineCount={roast.lineCount} />
         </div>
       </section>
 
@@ -158,8 +236,9 @@ async function RoastResultContent({ params }: { params: Promise<{ id: string }> 
               )}
 
               <div className="flex flex-col py-1">
-                {parseDiff(roast.suggestedDiff).map((line) => (
-                  <DiffLine key={`${line.type}-${line.content}`} type={line.type}>
+                {parseDiff(roast.suggestedDiff).map((line, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: diff lines are static, never reordered
+                  <DiffLine key={i} type={line.type}>
                     {line.content}
                   </DiffLine>
                 ))}
