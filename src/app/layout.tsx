@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ToastProvider } from '@/components/ui/toast'
 import { TRPCReactProvider } from '@/trpc/client'
 import '@/styles/globals.css'
 
@@ -32,8 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="antialiased">
         <TRPCReactProvider>
-          <Navbar />
-          {children}
+          <ToastProvider>
+            <Navbar />
+            {children}
+          </ToastProvider>
         </TRPCReactProvider>
       </body>
     </html>

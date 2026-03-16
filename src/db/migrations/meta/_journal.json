@@ -8,6 +8,13 @@
       "when": 1773527656961,
       "tag": "0000_solid_gravity",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773609378580,
+      "tag": "0001_numerous_norman_osborn",
+      "breakpoints": true
     }
   ]
 }

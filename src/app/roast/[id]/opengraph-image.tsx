@@ -6,10 +6,13 @@ import { roasts } from '@/db/schema'
 export const contentType = 'image/png'
 export const size = { width: 1200, height: 630 }
 
+// TTF URLs — Satori (used by both next/og and Takumi) only supports woff/ttf/otf, NOT woff2
 const FONT_URLS = {
-  jetbrainsMono:
-    'https://fonts.gstatic.com/s/jetbrainsmono/v21/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2',
-  ibmPlexMono: 'https://fonts.gstatic.com/s/ibmplexmono/v19/-F63fjptAgt5VM-kVkqdyU8n5iQ.woff2',
+  jetbrainsMonoRegular:
+    'https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPQ.ttf',
+  jetbrainsMonoBold:
+    'https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8L6tjPQ.ttf',
+  ibmPlexMono: 'https://fonts.gstatic.com/s/ibmplexmono/v20/-F63fjptAgt5VM-kVkqdyU8n5ig.ttf',
 }
 
 const COLORS = {
@@ -35,7 +38,8 @@ function truncateQuote(quote: string, maxLength = 120): string {
 type FontData = {
   name: string
   data: ArrayBuffer
-  weight: 400
+  weight: number
+  style: 'normal'
 }
 
 let fontsCache: FontData[] | null = null
@@ -43,14 +47,16 @@ let fontsCache: FontData[] | null = null
 async function loadFonts(): Promise<FontData[]> {
   if (fontsCache) return fontsCache
 
-  const [jetbrainsData, ibmPlexData] = await Promise.all([
-    fetch(FONT_URLS.jetbrainsMono).then((r) => r.arrayBuffer()),
+  const [jetbrainsRegularData, jetbrainsBoldData, ibmPlexData] = await Promise.all([
+    fetch(FONT_URLS.jetbrainsMonoRegular).then((r) => r.arrayBuffer()),
+    fetch(FONT_URLS.jetbrainsMonoBold).then((r) => r.arrayBuffer()),
     fetch(FONT_URLS.ibmPlexMono).then((r) => r.arrayBuffer()),
   ])
 
   fontsCache = [
-    { name: 'JetBrains Mono', data: jetbrainsData, weight: 400 as const },
-    { name: 'IBM Plex Mono', data: ibmPlexData, weight: 400 as const },
+    { name: 'JetBrains Mono', data: jetbrainsRegularData, weight: 400, style: 'normal' },
+    { name: 'JetBrains Mono', data: jetbrainsBoldData, weight: 700, style: 'normal' },
+    { name: 'IBM Plex Mono', data: ibmPlexData, weight: 400, style: 'normal' },
   ]
 
   return fontsCache
@@ -294,7 +300,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   return new ImageResponse(
     <RoastImage
       score={roast.score ?? 0}
-      verdict={roast.verdict ?? 'mediocre'}
+      verdict={(roast.verdict ?? 'mediocre').replace(/_/g, ' ')}
       language={roast.language}
       lineCount={roast.lineCount}
       roastQuote={roast.roastQuote ?? ''}

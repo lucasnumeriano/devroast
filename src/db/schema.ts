@@ -20,8 +20,21 @@ export const languageEnum = pgEnum('language', [
   'java',
   'css',
   'html',
+  'c',
+  'cpp',
+  'cs',
+  'php',
+  'json',
+  'markdown',
+  'yaml',
+  'shell',
+  'ruby',
+  'kotlin',
+  'swift',
   'other',
 ])
+
+export const roastStatusEnum = pgEnum('roast_status', ['pending', 'completed', 'failed'])
 
 export const roasts = pgTable('roasts', {
   id: uuid().defaultRandom().primaryKey(),
@@ -29,9 +42,11 @@ export const roasts = pgTable('roasts', {
   language: languageEnum().notNull().default('javascript'),
   lineCount: integer().notNull(),
   roastMode: boolean().notNull().default(false),
-  score: real().notNull(),
-  verdict: verdictEnum().notNull(),
-  roastQuote: text().notNull(),
+  status: roastStatusEnum().notNull().default('pending'),
+  ip: text(),
+  score: real(),
+  verdict: verdictEnum(),
+  roastQuote: text(),
   suggestedDiff: text(),
   diffFileName: text(),
   createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),

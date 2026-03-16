@@ -21,7 +21,9 @@ export default function Home() {
       </section>
 
       {/* Code Editor + Actions */}
-      <CodeInputSection />
+      <Suspense>
+        <CodeInputSection />
+      </Suspense>
 
       {/* Footer Stats */}
       <StatsBar />

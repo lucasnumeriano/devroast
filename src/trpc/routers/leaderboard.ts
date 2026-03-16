@@ -1,4 +1,4 @@
-import { asc, avg, count } from 'drizzle-orm'
+import { asc, avg, count, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { roasts } from '@/db/schema'
 import { baseProcedure, createTRPCRouter } from '../init'
@@ -20,6 +20,7 @@ export const leaderboardRouter = createTRPCRouter({
       const entries = await ctx.db
         .select()
         .from(roasts)
+        .where(eq(roasts.status, 'completed'))
         .orderBy(asc(roasts.score))
         .limit(limit)
         .offset(offset)
@@ -34,6 +35,7 @@ export const leaderboardRouter = createTRPCRouter({
         avgScore: avg(roasts.score),
       })
       .from(roasts)
+      .where(eq(roasts.status, 'completed'))
 
     return {
       totalRoasts: stats?.totalRoasts ?? 0,

@@ -318,6 +318,7 @@ function generateRoast() {
     language,
     lineCount,
     roastMode: faker.datatype.boolean({ probability: 0.4 }),
+    status: 'completed' as const,
     score,
     verdict: verdictForScore(score),
     roastQuote: faker.helpers.arrayElement(ROAST_QUOTES),

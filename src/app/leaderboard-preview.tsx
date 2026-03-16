@@ -47,7 +47,7 @@ export async function LeaderboardPreview() {
             <div key={entry.id}>
               <LeaderboardEntry
                 rank={index + 1}
-                score={entry.score.toFixed(1)}
+                score={(entry.score ?? 0).toFixed(1)}
                 code={entry.code}
                 language={entry.language}
                 lineCount={entry.lineCount}
