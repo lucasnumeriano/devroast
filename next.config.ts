@@ -3,6 +3,7 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   cacheComponents: true,
+  serverExternalPackages: ['@takumi-rs/core'],
   cacheLife: {
     leaderboard: {
       stale: 3600, // 1 hour
